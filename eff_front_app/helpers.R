@@ -29,7 +29,6 @@ assetCov <- function(stacked, tickers){
     selected <- stacked[sapply(stacked$ticker, function(x) x %in% tickers),] %>%
                 spread(.,ticker,monthly.returns)
     covMat <- 12*cov(selected[,-1], use = "complete.obs")
-    #covMat <- cor(selected[,-1], use = "complete.obs")
     return(covMat) 
   }
 }

@@ -1,43 +1,74 @@
 source("helpers.R")
-library(dplyr)
-library(quantmod)
-library(tidyr)
-library(xtable)
 library(ggplot2)
 library(scales)
 
 
 shinyServer(function(input, output) {
-  output$covMat <- renderTable({assetCov(full.list,input$stockPicks)})
-  output$Means <- renderTable({assetMean(full.list,input$stockPicks)})
+  
+  rfRate <- reactive({input$RF/100})
+  
+  targetVol <- reactive({input$targetVol/100})
+  
+  portfolio <- reactive({input$stockPicks})
+  
+  covMat <- reactive({assetCov(full.list,portfolio())})
+  
+  assetMns <- reactive({assetMean(full.list,portfolio())})
+  
+  riskyEF <- reactive({
+              mns <- seq(min(assetMns()),2*max(assetMns()), by = 0.005)
+              sds <- sapply(mns, function(x) mean.var.opt(assetMns(), covMat(),x,FALSE)[[2]]^0.5)
+              data.frame(expRet = mns, Vol = sds, curve = "RiskyEF")
+            })
+  
+  tangentPt <- reactive({
+                tang <- length(riskyEF()$Vol) - 1
+                x <- riskyEF()$Vol
+                y <- riskyEF()$expRet
+                while((y[tang]-rfRate())/x[tang] > (y[tang+1]-y[tang-1])/(x[tang+1]-x[tang-1])){
+                  tang <- tang - 1
+                }
+                xcoord <- x[tang]
+                ycoord <- y[tang]
+                slope <- (ycoord-rfRate())/xcoord
+                mix <- mean.var.opt(assetMns(), covMat(),ycoord,FALSE)[[1]]
+                list(xcoord = xcoord, ycoord = ycoord, slope = slope, mix = mix)
+            })
+  
+  optimalMix <- reactive({tangentPt()$mix})
+  
+  selectedNames <- reactive({dimnames(covMat())[[1]]})
+  
+  highlightDot <- reactive({data.frame(expRet = rfRate() + targetVol()*tangentPt()$slope,
+                                       Vol = targetVol(),
+                                       curve = "Optimal Portfolio")})
+  
+  totalEF <- reactive({
+              slope <- tangentPt()$slope
+              sds <- seq(0, 0.5, by = 0.01)
+              mns <- sapply(sds, function(z) rfRate() + slope*z)
+              data.frame(expRet = mns, Vol = sds, curve = "totalEF")
+            })
+  
+  cashPct <- reactive({1-targetVol()/tangentPt()$xcoord})
+  
   output$Eff.Front <- renderPlot({
-                      mns <- seq(0.0, 0.60, by = 0.001)
-                      assetMns <- assetMean(full.list,input$stockPicks)
-                      mns <- seq(min(assetMns), 2*max(assetMns), by = 0.001)
-                      Dmat <- assetCov(full.list,input$stockPicks)
-                      sds <- sapply(mns, function(x) mean.var.opt(assetMns, Dmat,x,FALSE)[[2]]^0.5)
-                      #plot(sds, mns, type="l")
-                      tang <- length(sds) - 1
-                      while((mns[tang]-input$RF)/sds[tang] > 
-                            (mns[tang+1]-mns[tang-1])/(sds[tang+1]-sds[tang-1])){
-                        tang <- tang - 1
-                      }
-                      slope <- (mns[tang]-input$RF)/sds[tang]
-                      #abline(a=input$RF,b=(mns[tang]-input$RF)/(sds[tang]))
-                      x.plot = seq(0,0.5,by = 0.01)
-                      y.plot = sapply(x.plot, function(x) input$RF + slope*x)
-                      #plot(x.plot,y.plot,type = "l")
-                      plot.data <- data.frame(sds = sds, mns = mns, curve = 'EF')
-                      plot.data <- rbind(plot.data,
-                                         data.frame(sds = x.plot, mns = y.plot, curve = 'tan'))
-                      gp <- ggplot(data = plot.data, aes(x=mns,y=sds, color = curve))
+                      plot.data <- rbind(riskyEF(),totalEF())
+                      gp <- ggplot(data = plot.data, aes(x=expRet,y=Vol, color = curve))
                       gp + geom_line() + 
+                        geom_point(y= highlightDot()$Vol,x=highlightDot()$expRet, size = 3) +
                         scale_x_continuous(name = "Expected Return", labels = percent) + 
                         scale_y_continuous(name = "Annualized Vol", labels = percent) +
                            coord_flip() + theme_minimal()
                     })
-  output$minmean <- renderText({min(assetMean(full.list,input$stockPicks))})
-  output$maxmean <- renderText({max(assetMean(full.list,input$stockPicks))})
-  output$echoRF <- renderText({input$RF})
+  
+  output$Mix <- renderText(optimalMix())
+  
+  output$Names <- renderText(selectedNames())
+  output$covariance <- renderTable({covMat()}, digits = 4)
+  output$tangentMean <- renderText({tangentPt()$ycoord})
+  output$tangentVol <- renderText({tangentPt()$xcoord})
+  output$assetMeans <- renderText({assetMns()})
+  output$cash <- renderText({cashPct()})
 })
 

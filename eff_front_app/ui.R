@@ -25,7 +25,7 @@ shinyUI(fluidPage(
                                         "Target" = "TGT",
                                         "Home Depot" = "HD",
                                         "Costco" = "COST"),
-                         selected = c('PNC','TWX','HD')),
+                         selected = c('PNC','DIS','DISCA')),
       sliderInput("RF","Risk-free rate",
                   value = 5,min=0.25,max=15,step=0.25, 
                   post = "%"),
@@ -38,14 +38,16 @@ shinyUI(fluidPage(
               #condition = "input.disclaimer",
               h1("Efficient Frontier", align = "center"),
               plotOutput("Eff.Front"),
-              h1("Optimal Risky Asset Mix", align = "center"),
-              textOutput("Names"),
-              textOutput("Mix"),
-              tableOutput("covariance"),
-              textOutput("tangentMean"),
-              textOutput("tangentVol"),
-              textOutput("assetMeans"),
-              textOutput("cash")
+#               h1("Optimal Risky Asset Mix", align = "center"),
+#               textOutput("Names"),
+#               textOutput("Mix"),
+#               tableOutput("covariance"),
+#               textOutput("tangentMean"),
+#               textOutput("tangentVol"),
+#               textOutput("assetMeans"),
+#               textOutput("cash"),
+              h1("Optimal Portfolio", align = "center"),
+              plotOutput("portfolio")
               )
 #     conditionalPanel(
 #       condition = "input.disclaimer",

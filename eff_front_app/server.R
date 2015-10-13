@@ -50,7 +50,26 @@ shinyServer(function(input, output) {
               data.frame(expRet = mns, Vol = sds, curve = "totalEF")
             })
   
-  cashPct <- reactive({1-targetVol()/tangentPt()$xcoord})
+  riskyPct <- reactive({targetVol()/tangentPt()$xcoord})
+  
+  cashPct <- reactive({1-riskyPct()})
+ 
+  portMix <- reactive({
+    port <- data.frame(asset =selectedNames(), 
+                       wt = riskyPct()*optimalMix(),
+                       stringsAsFactors = FALSE)
+    port <- rbind(port,c("Cash",cashPct()))
+    port$pos <- port$wt >= 0
+    port$wt <- as.numeric(port$wt)
+    port
+  })
+   
+  output$portfolio <- renderPlot({
+                        pp <- ggplot(data = portMix(), aes(x= asset,y=wt)) +
+                          geom_bar(stat = "identity", position = "identity", color = "black", size = 0.7) + 
+                          theme_minimal()
+                        pp
+                      })
   
   output$Eff.Front <- renderPlot({
                       plot.data <- rbind(riskyEF(),totalEF())

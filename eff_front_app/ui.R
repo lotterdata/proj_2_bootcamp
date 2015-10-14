@@ -26,11 +26,9 @@ shinyUI(fluidPage(
                                         "Home Depot" = "HD",
                                         "Costco" = "COST"),
                          selected = c('PNC','DIS','DISCA')),
-      sliderInput("RF","Risk-free rate",
-                  value = 5,min=0.25,max=15,step=0.25, 
-                  post = "%"),
+      uiOutput("rfSlider"),
       sliderInput("targetVol","Volatility Target",
-                  value = 5,min=5,max=50,step=0.5, 
+                  value = 15,min=0,max=50,step=0.5, 
                   post = "%")
       ), 
     

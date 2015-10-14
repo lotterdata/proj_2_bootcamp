@@ -16,10 +16,19 @@ shinyServer(function(input, output) {
   assetMns <- reactive({assetMean(full.list,portfolio())})
   
   riskyEF <- reactive({
-              mns <- seq(min(assetMns()),2*max(assetMns()), by = 0.005)
+              mns <- seq(min(assetMns()),2*max(assetMns()), by = 0.001)
               sds <- sapply(mns, function(x) mean.var.opt(assetMns(), covMat(),x,FALSE)[[2]]^0.5)
-              data.frame(expRet = mns, Vol = sds, curve = "RiskyEF")
+              data.frame(expRet = mns, Vol = sds, curve = "EF")
             })
+  
+  maxRF <- reactive({
+                tang <- length(riskyEF()$Vol)
+                x <- riskyEF()$Vol
+                y <- riskyEF()$expRet
+                slope <- (y[tang]-y[tang-1])/(x[tang]-x[tang-1])
+                round(floor(400*(y[tang] - slope*x[tang]))/400,2)
+              })
+  
   
   tangentPt <- reactive({
                 tang <- length(riskyEF()$Vol) - 1
@@ -28,6 +37,7 @@ shinyServer(function(input, output) {
                 while((y[tang]-rfRate())/x[tang] > (y[tang+1]-y[tang-1])/(x[tang+1]-x[tang-1])){
                   tang <- tang - 1
                 }
+                tang <- tang + 2
                 xcoord <- x[tang]
                 ycoord <- y[tang]
                 slope <- (ycoord-rfRate())/xcoord
@@ -47,7 +57,7 @@ shinyServer(function(input, output) {
               slope <- tangentPt()$slope
               sds <- seq(0, 0.5, by = 0.01)
               mns <- sapply(sds, function(z) rfRate() + slope*z)
-              data.frame(expRet = mns, Vol = sds, curve = "totalEF")
+              data.frame(expRet = mns, Vol = sds, curve = "CAL")
             })
   
   riskyPct <- reactive({targetVol()/tangentPt()$xcoord})
@@ -65,9 +75,12 @@ shinyServer(function(input, output) {
   })
    
   output$portfolio <- renderPlot({
-                        pp <- ggplot(data = portMix(), aes(x= asset,y=wt)) +
+                        pp <- ggplot(data = portMix(), aes(x= asset,y=wt, fill = pos)) +
                           geom_bar(stat = "identity", position = "identity", color = "black", size = 0.7) + 
-                          theme_minimal()
+                          scale_x_discrete(name = "") +
+                          scale_y_continuous(name = "Weight", labels = percent, limits = c(-2,2)) +
+                          scale_fill_manual(values = c("red","green"), guide = FALSE) +
+                          theme_bw()
                         pp
                       })
   
@@ -78,8 +91,14 @@ shinyServer(function(input, output) {
                         geom_point(y= highlightDot()$Vol,x=highlightDot()$expRet, size = 3) +
                         scale_x_continuous(name = "Expected Return", labels = percent) + 
                         scale_y_continuous(name = "Annualized Vol", labels = percent) +
-                           coord_flip() + theme_minimal()
+                           coord_flip() + theme_bw()
                     })
+  
+  output$rfSlider <- renderUI({
+                      sliderInput("RF","Risk-free rate",
+                                  value =4,min=0.25,max=100*maxRF(),step=0.25, 
+                                  post = "%")
+                      })
   
   output$Mix <- renderText(optimalMix())
   

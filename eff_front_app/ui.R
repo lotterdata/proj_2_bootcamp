@@ -2,11 +2,14 @@ shinyUI(fluidPage(
   titlePanel("Modern Portfolio Theory Demo"),
   sidebarLayout(
     sidebarPanel(
-      helpText(h2("Disclaimer")),
-      helpText("This demo is intended for educational purposes. 
-               It should not be taken as investment advice."),
-      checkboxInput("disclaimer","I understand."),
-      helpText(h2("Asset Information")),
+#       helpText(h2("Disclaimer")),
+#       helpText("This demo is intended for educational purposes. 
+#                It should not be taken as investment advice."),
+#       checkboxInput("disclaimer","I understand."),
+      
+      helpText(h2("Options")),
+      checkboxInput("longonly", "Long Only"),
+      checkboxInput("showline", "Show Capital Allocation Line", value = TRUE),
       checkboxGroupInput("stockPicks",
                          label = h3("Choose your stocks"),
                          choices = list("Pfizer" = "PFE",

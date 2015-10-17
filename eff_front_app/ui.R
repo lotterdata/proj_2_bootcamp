@@ -2,14 +2,9 @@ shinyUI(fluidPage(
   titlePanel("Modern Portfolio Theory Demo"),
   sidebarLayout(
     sidebarPanel(
-#       helpText(h2("Disclaimer")),
-#       helpText("This demo is intended for educational purposes. 
-#                It should not be taken as investment advice."),
-#       checkboxInput("disclaimer","I understand."),
-      
       helpText(h2("Options")),
+      checkboxInput("hideline", "Hide Capital Allocation Line"),
       checkboxInput("longonly", "Long Only"),
-      checkboxInput("showline", "Show Capital Allocation Line", value = TRUE),
       checkboxGroupInput("stockPicks",
                          label = h3("Choose your stocks"),
                          choices = list("Pfizer" = "PFE",
@@ -28,38 +23,21 @@ shinyUI(fluidPage(
                                         "Target" = "TGT",
                                         "Home Depot" = "HD",
                                         "Costco" = "COST"),
-                         selected = c('PNC','DIS','DISCA')),
-      uiOutput("rfSlider"),
+                         selected = c('PNC','DIS','HD','COST')),
       sliderInput("targetVol","Volatility Target",
                   value = 15,min=0,max=50,step=0.5, 
-                  post = "%")
+                  post = "%"),
+      uiOutput("rfSlider")
       ), 
     
     mainPanel(
-              #condition = "input.disclaimer",
-              h1("Efficient Frontier", align = "center"),
-              plotOutput("Eff.Front"),
-#               h1("Optimal Risky Asset Mix", align = "center"),
-#               textOutput("Names"),
-#               textOutput("Mix"),
-#               tableOutput("covariance"),
-#               textOutput("tangentMean"),
-#               textOutput("tangentVol"),
-#               textOutput("assetMeans"),
-#               textOutput("cash"),
-              h1("Optimal Portfolio", align = "center"),
-              plotOutput("portfolio")
+                h1("Efficient Frontier", align = "center"),
+                plotOutput("Eff.Front"),
+                conditionalPanel("!input.hideline",
+                                  h1("Optimal Portfolio", align = "center"),
+                                  plotOutput("portfolio") 
+                                )
               )
-#     conditionalPanel(
-#       condition = "input.disclaimer",
-#       h1("Efficient Frontier", align = "center"),
-#       plotOutput("Eff.Front")
-#     )#,   
-#     conditionalPanel(
-#       condition = "input.disclaimer",
-#       h1("Optimal Risky Asset Mix", align = "center"),
-#       textOutput("Names"),
-#       textOutput("Mix")
-#     )
+    )
   )
-))
+)

@@ -7,13 +7,15 @@ shinyServer(function(input, output) {
   
   longOnlyFlag <- reactive({input$longonly})
   
-  ShowLine <- reactive({input$showline})
+  ShowLine <- reactive({!input$hideline})
   
   rfRate <- reactive({input$RF/100})
   
   targetVol <- reactive({input$targetVol/100})
   
   portfolio <- reactive({input$stockPicks})
+  
+  numberAssets <- reactive({length(input$stockPicks)})
   
   covMat <- reactive({assetCov(full.list,portfolio())})
   
@@ -31,11 +33,15 @@ shinyServer(function(input, output) {
             })
   
   maxRF <- reactive({
-                tang <- length(riskyEF()$Vol)
-                x <- riskyEF()$Vol
-                y <- riskyEF()$expRet
-                slope <- (y[tang]-y[tang-1])/(x[tang]-x[tang-1])
-                round(floor(400*(y[tang] - slope*x[tang]))/400,2)
+                if(numberAssets() > 1){
+                  tang <- length(riskyEF()$Vol)
+                  x <- riskyEF()$Vol
+                  y <- riskyEF()$expRet
+                  slope <- (y[tang]-y[tang-1])/(x[tang]-x[tang-1])
+                  round(floor(400*(y[tang] - slope*x[tang]))/400,2)                  
+                }
+                else
+                  0.05
               })
   
   
@@ -76,14 +82,16 @@ shinyServer(function(input, output) {
   portMix <- reactive({
     port <- data.frame(asset =selectedNames(), 
                        wt = riskyPct()*optimalMix(),
+                       rndwt = 100*round(riskyPct()*optimalMix(),3),
                        stringsAsFactors = FALSE)
-    port <- rbind(port,c("Cash",cashPct()))
+    port <- rbind(port,c("Cash",cashPct(),100*round(cashPct(),3)))
     port$pos <- port$wt >= 0
     port$wt <- as.numeric(port$wt)
     port
   })
    
   output$portfolio <- renderPlot({
+                        validate(need(numberAssets() > 1,'You must select at least 2 assets.'))
                         if(longOnlyFlag())
                           lims <- c(0,1)
                         else
@@ -93,11 +101,14 @@ shinyServer(function(input, output) {
                           scale_x_discrete(name = "") +
                           scale_y_continuous(name = "Weight", labels = percent, limits = lims) +
                           scale_fill_manual(values = c("red","green"), guide = FALSE) +
+                          geom_text(aes(label = rndwt, vjust = -1.5), color = "black", labels = percent) +
+                          #position_identity(height = 0.5) +
                           theme_bw()
                         pp
                       })
   
   output$Eff.Front <- renderPlot({
+                      validate(need(numberAssets() > 1,'You must select at least 2 assets.'))
                       if(ShowLine())
                         plot.data <- rbind(riskyEF(),totalEF())
                       else
@@ -105,17 +116,11 @@ shinyServer(function(input, output) {
                       gp <- ggplot(data = plot.data, aes(x=expRet,y=Vol, color = curve))
                       gp <-   gp + geom_line() + 
                               scale_x_continuous(name = "Expected Return", labels = percent) + 
-                              scale_y_continuous(name = "Annualized Vol", labels = percent) +
+                              scale_y_continuous(name = "Volatility", labels = percent, limits = c(0,0.6)) +
                                     coord_flip() + theme_bw()  
                       if(ShowLine())
                         gp <- gp + geom_point(y= highlightDot()$Vol,x=highlightDot()$expRet, size = 3)
                       gp
-                      
-#                       gp + geom_line() + 
-#                         geom_point(y= highlightDot()$Vol,x=highlightDot()$expRet, size = 3) +
-#                         scale_x_continuous(name = "Expected Return", labels = percent) + 
-#                         scale_y_continuous(name = "Annualized Vol", labels = percent) +
-#                            coord_flip() + theme_bw()
                     })
   
   output$rfSlider <- renderUI({
@@ -124,13 +129,5 @@ shinyServer(function(input, output) {
                                   post = "%")
                       })
   
-  output$Mix <- renderText(optimalMix())
-  
-  output$Names <- renderText(selectedNames())
-  output$covariance <- renderTable({covMat()}, digits = 4)
-  output$tangentMean <- renderText({tangentPt()$ycoord})
-  output$tangentVol <- renderText({tangentPt()$xcoord})
-  output$assetMeans <- renderText({assetMns()})
-  output$cash <- renderText({cashPct()})
 })
 

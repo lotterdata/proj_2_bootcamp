@@ -13,9 +13,17 @@ shinyServer(function(input, output) {
   
   targetVol <- reactive({input$targetVol/100})
   
-  portfolio <- reactive({input$stockPicks})
+  pharmport <- reactive({input$pharma})
   
-  numberAssets <- reactive({length(input$stockPicks)})
+  finpport <- reactive({input$finance})
+  
+  medport <- reactive({input$media})
+  
+  retport <- reactive({input$retail})
+  
+  portfolio <- eventReactive(input$submit,{c(pharmport(),finpport(),medport(),retport())})#reactive({c(pharmport(),finpport(),medport(),retport())})
+  
+  numberAssets <- reactive({length(portfolio())})
   
   covMat <- reactive({assetCov(full.list,portfolio())})
   
@@ -62,6 +70,8 @@ shinyServer(function(input, output) {
   
   optimalMix <- reactive({tangentPt()$mix})
   
+  tangentVol <- reactive({tangentPt()$xcoord})
+  
   selectedNames <- reactive({dimnames(covMat())[[1]]})
   
   highlightDot <- reactive({data.frame(expRet = rfRate() + targetVol()*tangentPt()$slope,
@@ -92,6 +102,8 @@ shinyServer(function(input, output) {
    
   output$portfolio <- renderPlot({
                         validate(need(numberAssets() > 1,'You must select at least 2 assets.'))
+                        validate(need(cashPct() >= 0 | !longOnlyFlag(),
+                                      'Set a lower volatility target. Current value cannot be met without buying on margin'))
                         if(longOnlyFlag())
                           lims <- c(0,1)
                         else
@@ -128,6 +140,11 @@ shinyServer(function(input, output) {
                                   value =4,min=0.25,max=100*maxRF(),step=0.25, 
                                   post = "%")
                       })
+  
+  
+  output$tangvol <- renderText({paste(as.character(100*round(tangentVol(),3)),'%')})
+  
+  output$blank <- renderText({'\n\n'})
   
 })
 
